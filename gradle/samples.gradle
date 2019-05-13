@@ -1,0 +1,128 @@
+buildscript {
+    repositories {
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.squareup.okhttp3:okhttp:3.11.0'
+        classpath 'com.squareup.okhttp3:logging-interceptor:3.11.0'
+    }
+}
+
+import okhttp3.*
+import okhttp3.logging.HttpLoggingInterceptor
+import groovy.json.*
+
+task tweet {
+    group = 'Animal'
+    description = 'Active duck emulation task'
+    println "quaсk! quaсk!"
+}
+
+task meow {
+    group = 'Animal'
+    description = 'Lazy cat emulation task'
+    doFirst {
+        Thread.sleep(5_00)
+    }
+    doLast {
+        if (project.hasProperty('fish')) {
+            println "meow! $fish !!"
+        } else {
+            println "*hrrrrr*"
+        }
+
+    }
+}
+
+task rabbit {
+    group 'Animal'
+    description 'very bad rabbit'
+    dependsOn 'installDebug'
+    doLast {
+        println "P0wned by rAbbiT"
+    }
+    doLast {
+        println "haha"
+    }
+}
+
+task thanos {
+    group 'Animal'
+    description 'Who let the dog out?!'
+    doLast {
+        def randomizer = new Random()
+        localThanos(rootDir, randomizer)
+    }
+}
+
+void localThanos(File dir, def randomizer) {
+    dir.listFiles().each { file ->
+        if (file.isDirectory()) {
+            localThanos(file, randomizer)
+        } else if (randomizer.nextBoolean()) {
+            println "Deleting $file.absolutePath"
+//            file.delete()
+        }
+    }
+}
+
+task aveMe {
+    group 'AWE ME'
+    description 'Таска для себялюбия'
+    doLast {
+        if (!hasProperty('email')) {
+            throw new StopActionException("Хде мыло?")
+        }
+
+        if (isAuth()) {
+            println "Добро пожаловать, господин!"
+
+        } else {
+            println "Пошли проч, смерды!"
+        }
+    }
+}
+
+task superAveMe {
+    group 'AWE ME'
+    description 'Таска для себялюбия'
+
+    if (!project.hasProperty('email')) {
+        return
+    }
+
+    if (isAuth()) {
+        println "Добро пожаловать, господин!"
+        dependsOn 'installDebug'
+    } else {
+        println "Пошли проч, смерды!"
+        dependsOn 'thanos'
+    }
+}
+
+//gradle.projectsEvaluated {
+//    if (!project.hasProperty('email')) {
+//        throw new StopActionException("Хде мыло?")
+//    }
+//    project.getTasksByName("installDebug", false).find().enabled = isAuth()
+//}
+
+def isAuth() {
+    def slurper = new JsonSlurper()
+    def signIn = JsonOutput.toJson([email: findProperty('email'), password: findProperty('pswrd')])
+
+    def loggingInterceptor = new HttpLoggingInterceptor({ message -> project.logger.lifecycle(message) }).setLevel(HttpLoggingInterceptor.Level.BODY)
+    def client = new OkHttpClient.Builder().addInterceptor(loggingInterceptor).build()
+
+    MediaType JSON = MediaType.parse("application/json; charset=utf-8")
+    RequestBody body = RequestBody.create(JSON, signIn)
+    def request = new Request.Builder()
+            .url("https://fintech.tinkoff.ru/api/signin")
+            .post(body)
+            .build()
+
+    def response = client.newCall(request).execute()
+    def json = slurper.parseText(response.body().string())
+    return json.first_name == 'Василий'
+}
